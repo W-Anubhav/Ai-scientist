@@ -38,7 +38,7 @@ def initialize_components():
         # 2. Define the Chain (The "Engine") with retry configuration
         # Use correct model name for paid tier
         llm = ChatGoogleGenerativeAI(
-            model="gemini-1.5-flash", 
+            model="gemini-flash-latest", 
             temperature=0,
             google_api_key=os.getenv("GOOGLE_API_KEY"),
             max_retries=5,

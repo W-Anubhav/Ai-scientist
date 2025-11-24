@@ -17,7 +17,7 @@ if not os.getenv("GOOGLE_API_KEY"):
 
 # Option 1: Use CrewAI's LLM class with google-genai provider
 llm = CrewLLM(
-    model="gemini/gemini-1.5-flash",  # Litellm format: provider/model
+    model="gemini/gemini-flash-latest",  # Litellm format: provider/model
     api_key=os.getenv("GOOGLE_API_KEY"),
     temperature=0.2
 )
