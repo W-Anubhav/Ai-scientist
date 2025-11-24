@@ -259,11 +259,26 @@ with tab1:
                             def progress_callback(msg):
                                 status_text.text(msg)
                             
-                            file_triples = process_pdf_file(
+                            file_triples, domain = process_pdf_file(
                                 tmp_path, 
                                 filename=uploaded_file.name,
                                 progress_callback=progress_callback
                             )
+                            
+                            # Store domain and generate relevant queries if not already done
+                            if domain and domain != "Unknown":
+                                st.session_state.current_domain = domain
+                                # Generate dynamic queries based on domain
+                                try:
+                                    from tools import llm
+                                    prompt = f"Generate 5 short, interesting natural language questions for a knowledge graph about {domain}. Return only the questions as a JSON list of strings."
+                                    response = llm.invoke(prompt)
+                                    import re
+                                    json_match = re.search(r'\[.*?\]', str(response.content), re.DOTALL)
+                                    if json_match:
+                                        st.session_state.dynamic_queries = json.loads(json_match.group())
+                                except:
+                                    pass # Fallback to default queries if generation fails
                             
                             all_triples.extend(file_triples)
                             progress_bar.progress((idx + 1) / len(uploaded_files))
@@ -322,13 +337,20 @@ with tab2:
     else:
         # Example queries
         st.markdown("### 💡 Example Queries")
-        example_queries = [
+        
+        # Use dynamic queries if available, otherwise defaults
+        default_queries = [
             "What are all the entities related to Alzheimer's disease?",
             "List all proteins and their relationships",
             "What mechanisms are associated with neuroinflammation?",
             "Show me all relationships involving amyloid",
             "What are the connections between different diseases?"
         ]
+        
+        example_queries = st.session_state.get('dynamic_queries', default_queries)
+        
+        if st.session_state.get('current_domain'):
+            st.info(f"🎯 Detected Domain: **{st.session_state.current_domain}**")
         
         cols = st.columns(3)
         for i, example in enumerate(example_queries):

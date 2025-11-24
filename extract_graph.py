@@ -167,12 +167,12 @@ def process_pdf_file(file_path_or_bytes, filename: str = None, progress_callback
         if progress_callback:
             progress_callback(f"✅ Extracted {len(all_triples)} triples from {filename or 'file'}.")
         
-        return all_triples
+        return all_triples, current_domain
         
     except Exception as e:
         if progress_callback:
             progress_callback(f"❌ Failed to process file: {e}")
-        return []
+        return [], "Unknown"
 
 def detect_domain(preview_text):
     """Asks Gemini to guess the domain from the first 1000 chars."""

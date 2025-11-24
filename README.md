@@ -184,31 +184,6 @@ This project is for research and educational purposes.
    - Ensure your repository is public or you have permissions to deploy private repos.
    - Make sure `requirements.txt` is in the root directory.
 
-2. **Sign in to Streamlit Cloud**
-   - Go to [share.streamlit.io](https://share.streamlit.io/) and sign in with your GitHub account.
-
-3. **Deploy the App**
-   - Click "New app".
-   - Select your repository, branch (usually `main`), and main file path (`app.py`).
-   - Click "Deploy!".
-
-4. **Configure Secrets**
-   - Once the app is deployed (it might fail initially due to missing secrets), go to the app dashboard.
-   - Click on "Settings" -> "Secrets".
-   - Add your secrets in the TOML format:
-
-   ```toml
-   GOOGLE_API_KEY = "your_gemini_api_key_here"
-   NEO4J_URI = "bolt://your-neo4j-instance-url:7687"
-   NEO4J_USERNAME = "neo4j"
-   NEO4J_PASSWORD = "your_neo4j_password"
-   ```
-
-   > **Note**: For Neo4j, you'll need a cloud-hosted instance (like Neo4j AuraDB) since `localhost` won't work on Streamlit Cloud.
-
-5. **Reboot the App**
-   - After saving secrets, reboot the app if it doesn't restart automatically.
-
 ## 🤝 Contributing
 
 Feel free to submit issues or pull requests to improve the application!
