@@ -10,23 +10,17 @@ load_dotenv()
 # Define the LLM for CrewAI
 # Use CrewAI's LLM class with correct format for Gemini
 # With google-genai provider installed, use the correct format
-try:
-    # Option 1: Use CrewAI's LLM class with google-genai provider
-    llm = CrewLLM(
-        model="gemini/gemini-1.5-flash",  # Litellm format: provider/model
-        api_key=os.getenv("GOOGLE_API_KEY"),
-        temperature=0.2
-    )
-except Exception as e:
-    # Option 2: Fallback to LangChain LLM
-    llm = ChatGoogleGenerativeAI(
-        model="gemini-1.5-flash",
-        verbose=True,
-        temperature=0.2,
-        google_api_key=os.getenv("GOOGLE_API_KEY"),
-        max_retries=5,
-        request_timeout=120
-    )
+
+# Check for API key
+if not os.getenv("GOOGLE_API_KEY"):
+    print("⚠️ WARNING: GOOGLE_API_KEY not found in environment variables!")
+
+# Option 1: Use CrewAI's LLM class with google-genai provider
+llm = CrewLLM(
+    model="gemini/gemini-1.5-flash",  # Litellm format: provider/model
+    api_key=os.getenv("GOOGLE_API_KEY"),
+    temperature=0.2
+)
 
 # --- AGENTS ---
 
