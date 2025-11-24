@@ -54,23 +54,51 @@ llm_general = ChatGoogleGenerativeAI(
 
 # 3. Helper Functions
 def read_pdf(file_path_or_bytes):
-    """Reads all text from a PDF file or bytes object."""
+    """Reads all text from a PDF file or bytes object using multiple methods."""
     text = ""
-    if isinstance(file_path_or_bytes, bytes):
-        # Handle uploaded file bytes
-        import io
-        with pdfplumber.open(io.BytesIO(file_path_or_bytes)) as pdf:
-            for page in pdf.pages:
+    
+    # Method 1: Try pdfplumber (best for layout)
+    try:
+        if isinstance(file_path_or_bytes, bytes):
+            import io
+            with pdfplumber.open(io.BytesIO(file_path_or_bytes)) as pdf:
+                for page in pdf.pages:
+                    extracted = page.extract_text()
+                    if extracted:
+                        text += extracted + "\n"
+        else:
+            with pdfplumber.open(file_path_or_bytes) as pdf:
+                for page in pdf.pages:
+                    extracted = page.extract_text()
+                    if extracted:
+                        text += extracted + "\n"
+    except Exception as e:
+        print(f"⚠️ pdfplumber failed: {e}")
+
+    # Method 2: Fallback to pypdf (more robust for some encodings)
+    if not text or len(text.strip()) < 100:
+        try:
+            print("🔄 Falling back to pypdf extraction...")
+            import pypdf
+            import io
+            
+            if isinstance(file_path_or_bytes, bytes):
+                reader = pypdf.PdfReader(io.BytesIO(file_path_or_bytes))
+            else:
+                reader = pypdf.PdfReader(file_path_or_bytes)
+                
+            pypdf_text = ""
+            for page in reader.pages:
                 extracted = page.extract_text()
                 if extracted:
-                    text += extracted + "\n"
-    else:
-        # Handle file path
-        with pdfplumber.open(file_path_or_bytes) as pdf:
-            for page in pdf.pages:
-                extracted = page.extract_text()
-                if extracted:
-                    text += extracted + "\n"
+                    pypdf_text += extracted + "\n"
+            
+            if len(pypdf_text) > len(text):
+                text = pypdf_text
+                print("✅ pypdf extraction successful")
+        except Exception as e:
+            print(f"⚠️ pypdf failed: {e}")
+            
     return text
 
 def process_pdf_file(file_path_or_bytes, filename: str = None, progress_callback=None):
