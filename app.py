@@ -37,43 +37,113 @@ if 'db_cleared' not in st.session_state:
         print(f"Error clearing database: {e}")
 
 # Custom CSS for beautiful styling
+# Custom CSS for beautiful styling
 st.markdown("""
 <style>
+    /* Main Layout & Background */
+    .stApp {
+        background-color: #0E1117;
+        color: #FAFAFA;
+    }
+    
+    /* Headers */
     .main-header {
-        font-size: 3rem;
-        font-weight: bold;
-        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        font-family: 'Inter', sans-serif;
+        font-size: 3.5rem;
+        font-weight: 800;
+        background: linear-gradient(120deg, #FF4B4B 0%, #FF9068 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         text-align: center;
-        margin-bottom: 1rem;
+        margin-bottom: 2rem;
+        text-shadow: 0 0 30px rgba(255, 75, 75, 0.3);
     }
+    
+    h1, h2, h3 {
+        font-family: 'Inter', sans-serif;
+        color: #E0E0E0;
+    }
+    
+    /* Cards & Containers */
+    .metric-card {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        padding: 1.5rem;
+        border-radius: 16px;
+        backdrop-filter: blur(10px);
+        transition: transform 0.3s ease;
+    }
+    
+    .metric-card:hover {
+        transform: translateY(-5px);
+        border-color: #FF4B4B;
+    }
+    
+    .info-box {
+        background: rgba(38, 39, 48, 0.5);
+        padding: 1.5rem;
+        border-radius: 12px;
+        border-left: 4px solid #FF4B4B;
+        margin: 1rem 0;
+    }
+    
+    /* Buttons */
     .stButton>button {
-        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(90deg, #FF4B4B 0%, #FF9068 100%);
         color: white;
         border: none;
-        border-radius: 10px;
-        padding: 0.5rem 2rem;
-        font-weight: bold;
-        transition: all 0.3s;
+        border-radius: 8px;
+        padding: 0.6rem 1.5rem;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(255, 75, 75, 0.2);
     }
+    
     .stButton>button:hover {
         transform: translateY(-2px);
-        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        box-shadow: 0 8px 25px rgba(255, 75, 75, 0.4);
     }
-    .metric-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 1.5rem;
-        border-radius: 15px;
+    
+    /* Inputs */
+    .stTextInput>div>div>input {
+        background-color: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
         color: white;
-        text-align: center;
+        border-radius: 8px;
     }
-    .info-box {
-        background: #f0f2f6;
-        padding: 1rem;
-        border-radius: 10px;
-        border-left: 4px solid #667eea;
-        margin: 1rem 0;
+    
+    .stTextInput>div>div>input:focus {
+        border-color: #FF4B4B;
+        box-shadow: 0 0 0 1px #FF4B4B;
+    }
+    
+    /* Sidebar */
+    [data-testid="stSidebar"] {
+        background-color: #161B22;
+        border-right: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    
+    /* Tabs */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 24px;
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        height: 50px;
+        white-space: pre-wrap;
+        background-color: transparent;
+        border-radius: 4px 4px 0 0;
+        gap: 1px;
+        padding-top: 10px;
+        padding-bottom: 10px;
+        color: #9CA3AF;
+    }
+    
+    .stTabs [aria-selected="true"] {
+        background-color: transparent;
+        color: #FF4B4B;
+        border-bottom: 2px solid #FF4B4B;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -98,7 +168,7 @@ with st.sidebar:
     
     # Connection status
     try:
-        stats = get_graph_stats()
+        stats = get_graph_stats(session_id=st.session_state.session_id)
         st.success("✅ Neo4j Connected")
         st.metric("Nodes", stats.get('nodes', 0))
         st.metric("Relationships", stats.get('relationships', 0))
@@ -117,7 +187,7 @@ with st.sidebar:
     st.markdown("### 📊 Quick Stats")
     if st.session_state.graph_created:
         try:
-            stats = get_graph_stats()
+            stats = get_graph_stats(session_id=st.session_state.session_id)
             st.write(f"**Total Nodes:** {stats['nodes']}")
             st.write(f"**Total Relationships:** {stats['relationships']}")
             if stats['relation_types']:
@@ -289,7 +359,7 @@ with tab2:
                     # Check if graph has data
                     try:
                         from graph_utils import get_graph_stats
-                        stats = get_graph_stats()
+                        stats = get_graph_stats(session_id=st.session_state.session_id)
                         node_count = stats.get('nodes', 0)
                         rel_count = stats.get('relationships', 0)
                         

@@ -141,18 +141,32 @@ class GraphTools:
                 session_filter = f"WHERE n.session_id = '{session_id}' AND m.session_id = '{session_id}'" if session_id else ""
                 
                 enhanced_question = f"""
-                Graph Schema: Nodes have label 'Entity' with property 'name' and 'session_id'. Relationships have type 'RELATION' with property 'type' and 'session_id'.
+                You are an expert Neo4j Cypher query generator for a scientific knowledge graph.
                 
-                IMPORTANT: You must ONLY query data belonging to the current session.
+                Graph Schema:
+                - Nodes: Label 'Entity', properties: 'name', 'session_id'
+                - Relationships: Type 'RELATION', properties: 'type', 'session_id'
+                
                 Current Session ID: {session_id}
                 
-                Pattern: (n:Entity {{name: 'entity_name'}})-[r:RELATION]-(m:Entity {{name: 'entity_name'}})
-                ALWAYS include the session filter: {session_filter}
+                Task: Generate a Cypher query to answer the user's question.
                 
-                Question: {question}
+                Rules:
+                1. ALWAYS filter by session_id: {session_filter}
+                2. Use case-insensitive matching: toLower(n.name) CONTAINS toLower('value')
+                3. Return meaningful results: n.name, r.type, m.name
+                4. Limit results to 20 to avoid overwhelming output.
                 
-                Generate a Cypher query using the Entity label and RELATION type.
-                Ensure EVERY MATCH clause filters by session_id = '{session_id}'.
+                Example Questions & Queries:
+                Q: "What interacts with Protein X?"
+                A: MATCH (n:Entity)-[r:RELATION]-(m:Entity) WHERE toLower(n.name) CONTAINS 'protein x' AND n.session_id = '{session_id}' AND m.session_id = '{session_id}' RETURN n.name, r.type, m.name LIMIT 20
+                
+                Q: "List all diseases"
+                A: MATCH (n:Entity) WHERE n.session_id = '{session_id}' AND (toLower(n.name) CONTAINS 'disease' OR toLower(n.name) CONTAINS 'syndrome') RETURN n.name LIMIT 20
+                
+                User Question: {question}
+                
+                Generate ONLY the Cypher query. No markdown, no explanations.
                 """
                 
                 # Try different invocation formats
