@@ -2,6 +2,7 @@
 Utility functions for knowledge graph visualization and querying.
 """
 import os
+import time
 from typing import List, Dict, Tuple
 from neo4j import GraphDatabase
 from dotenv import load_dotenv
@@ -204,3 +205,30 @@ def query_graph_cypher(query: str, session_id=None) -> List[Dict]:
 
 
 
+def cleanup_old_data(hours: int = 24):
+    """Delete nodes and relationships older than the specified hours"""
+    driver = get_neo4j_driver()
+    try:
+        with driver.session() as session:
+            # Calculate cutoff timestamp (milliseconds)
+            # timestamp() in Cypher returns milliseconds
+            cutoff_ms = int(time.time() * 1000) - (hours * 3600 * 1000)
+            
+            # Delete old nodes (relationships will be deleted automatically due to detach)
+            # We check for created_at property existence to avoid deleting permanent data if any
+            result = session.run("""
+                MATCH (n:Entity)
+                WHERE n.created_at < $cutoff
+                DETACH DELETE n
+                RETURN count(n) as count
+            """, cutoff=cutoff_ms)
+            
+            deleted_count = result.single()["count"]
+            if deleted_count > 0:
+                print(f"🧹 Cleanup: Deleted {deleted_count} old nodes (older than {hours} hours).")
+            return deleted_count
+    except Exception as e:
+        print(f"Error during cleanup: {e}")
+        return 0
+    finally:
+        driver.close()

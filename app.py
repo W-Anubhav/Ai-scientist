@@ -14,7 +14,8 @@ from graph_utils import (
     get_graph_sample, 
     visualize_graph_pyvis,
     get_entity_connections,
-    clear_database
+    clear_database,
+    cleanup_old_data
 )
 
 # Page configuration
@@ -28,10 +29,18 @@ st.set_page_config(
 # Clear database on startup (only once per session)
 if 'db_cleared' not in st.session_state:
     try:
+        # 1. Clear current session data (just in case)
         if clear_database(st.session_state.session_id):
             print(f"✅ Database cleared for session {st.session_state.session_id}")
         else:
             print("❌ Failed to clear database on startup")
+            
+        # 2. Run TTL Cleanup (delete orphaned data > 24 hours old)
+        # This runs once per user session start, keeping the DB clean
+        deleted = cleanup_old_data(hours=24)
+        if deleted > 0:
+            print(f"🧹 Auto-Cleanup: Removed {deleted} old nodes.")
+            
         st.session_state.db_cleared = True
     except Exception as e:
         print(f"Error clearing database: {e}")
@@ -145,6 +154,12 @@ st.markdown("""
         color: #FF4B4B;
         border-bottom: 2px solid #FF4B4B;
     }
+    
+    /* HIDE STREAMLIT DEFAULT ELEMENTS */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    
 </style>
 """, unsafe_allow_html=True)
 

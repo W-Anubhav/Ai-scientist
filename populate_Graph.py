@@ -18,9 +18,11 @@ AUTH = (os.getenv("NEO4J_USERNAME"), os.getenv("NEO4J_PASSWORD"))
 IMPORT_QUERY = """
 UNWIND $triples AS row
 MERGE (h:Entity {name: row.head, session_id: $session_id})
+ON CREATE SET h.created_at = timestamp()
 MERGE (t:Entity {name: row.tail, session_id: $session_id})
+ON CREATE SET t.created_at = timestamp()
 MERGE (h)-[r:RELATION {type: row.relation}]->(t)
-SET r.session_id = $session_id
+SET r.session_id = $session_id, r.created_at = timestamp()
 """
 
 def populate_neo4j(json_file_path, session_id=None):
