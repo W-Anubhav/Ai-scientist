@@ -431,19 +431,20 @@ with tab3:
             with st.spinner("🎨 Creating visualization..."):
                 try:
                     if viz_type == "Random Sample":
-                        triples_data = get_graph_sample(limit=viz_limit)
+                        triples_data = get_graph_sample(limit=viz_limit, session_id=st.session_state.session_id)
                     elif viz_type == "Full Graph":
                         # Get all relationships (limited)
                         from graph_utils import query_graph_cypher
                         triples_data = query_graph_cypher(f"""
                             MATCH (h:Entity)-[r:RELATION]->(t:Entity)
+                            WHERE h.session_id = '{st.session_state.session_id}' AND t.session_id = '{st.session_state.session_id}'
                             RETURN h.name as head, r.type as relation, t.name as tail
                             LIMIT {viz_limit}
-                        """)
+                        """, session_id=st.session_state.session_id)
                     else:
                         entity_name = st.text_input("Enter entity name for connections:", key="entity_viz")
                         if entity_name:
-                            connections = get_entity_connections(entity_name, limit=viz_limit)
+                            connections = get_entity_connections(entity_name, limit=viz_limit, session_id=st.session_state.session_id)
                             triples_data = [{"head": entity_name, "relation": "connected_to", "tail": conn['entity']} 
                                            for conn in connections]
                         else:

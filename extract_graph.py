@@ -21,7 +21,7 @@ print(f"DEBUG: My Key starts with: {key[:5]}... and ends with: ...{key[-5:]}")
 # --- CONFIGURATION ---
 PDF_FOLDER = "pdfs"       # Folder containing your PDF files
 OUTPUT_FILE = "triples.json" # Final output file
-CHUNK_SIZE = 20000         # Characters per chunk (increased to leverage Gemini's context)
+CHUNK_SIZE = 15000         # Characters per chunk (reduced to avoid context limits) to leverage Gemini's context)
 # ---------------------
 
 # 2. Define the Strict Schema (Domain Agnostic)
@@ -90,9 +90,11 @@ def process_pdf_file(file_path_or_bytes, filename: str = None, progress_callback
     try:
         # Read PDF
         raw_text = read_pdf(file_path_or_bytes)
-        if not raw_text:
+        if not raw_text or len(raw_text.strip()) < 100:
+            msg = f"⚠️ Warning: Empty or very short text found in {filename or 'file'}. This might be a scanned PDF (image-only)."
             if progress_callback:
-                progress_callback(f"⚠️ Warning: Empty text found in {filename or 'file'}. Skipping.")
+                progress_callback(msg)
+            print(msg)
             return []
         
         if progress_callback:
@@ -226,13 +228,28 @@ Return the JSON array now:"""
             # Clean the content - remove markdown code blocks if present
             content = re.sub(r'```json\s*', '', content)
             content = re.sub(r'```\s*', '', content)
+            # Remove any leading/trailing text that isn't part of the JSON array
             content = content.strip()
             
-            # Try to find JSON array
-            json_match = re.search(r'\[[\s\S]*?\]', content, re.DOTALL)
+            # Try to find JSON array with more robust regex
+            # Matches [ ... ] including nested braces if simple, but mainly looks for outer brackets
+            json_match = re.search(r'\[\s*\{.*\}\s*\]', content, re.DOTALL)
+            
             if json_match:
+                json_str = json_match.group()
+            else:
+                # Fallback: try to find just the array brackets if the content is just the array
+                if content.startswith('[') and content.endswith(']'):
+                    json_str = content
+                else:
+                    json_str = None
+
+            if json_str:
                 try:
-                    json_str = json_match.group()
+                    # Fix common JSON errors from LLMs (like trailing commas)
+                    json_str = re.sub(r',\s*\]', ']', json_str)
+                    json_str = re.sub(r',\s*\}', '}', json_str)
+                    
                     triples_data = json.loads(json_str)
                     
                     if isinstance(triples_data, list) and len(triples_data) > 0:
