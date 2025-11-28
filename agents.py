@@ -7,23 +7,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Define LLMs (Global)
-# Check for API key
-if not os.getenv("GOOGLE_API_KEY"):
-    print("⚠️ WARNING: GOOGLE_API_KEY not found in environment variables!")
-
-llm_fast = CrewLLM(model="gemini/gemini-2.5-flash", api_key=os.getenv("GOOGLE_API_KEY"))
-llm_smart = CrewLLM(model="gemini/gemini-2.5-pro", api_key=os.getenv("GOOGLE_API_KEY"), temperature=0.7)
-        if os.path.exists(full_path):
-            try:
-                shutil.rmtree(full_path)
-                print(f"   - Wiped: {full_path}")
-            except Exception as e:
-                print(f"   - Error wiping {full_path}: {e}")
-
-def get_crew(topic, domain="Scientific Research"):
-    """
-    Creates a dynamic crew that adapts its persona to the specific domain.
-    Args:
         topic: The specific subject (e.g., "Adversarial Attacks on GNNs")
         domain: The broader field (e.g., "Computer Science", "Sociology", "Biology")
     """
