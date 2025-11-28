@@ -13,23 +13,6 @@ if not os.getenv("GOOGLE_API_KEY"):
 
 llm_fast = CrewLLM(model="gemini/gemini-2.5-flash", api_key=os.getenv("GOOGLE_API_KEY"))
 llm_smart = CrewLLM(model="gemini/gemini-2.5-pro", api_key=os.getenv("GOOGLE_API_KEY"), temperature=0.7)
-
-def clear_agent_memory():
-    """
-    Destroys the AI's short-term and long-term memory before a new run.
-    This prevents 'Context Pollution' where old papers bleed into new research.
-    """
-    memory_dirs = [
-        "./workdir/short_term",   # CrewAI default memory paths
-        "./workdir/long_term",
-        "./chroma_db",            # If you are using a custom VectorStore
-        "~/.crewai/memory"        # Global cache (sometimes hidden here)
-    ]
-    
-    print("🧹 Cleaning AI Memory...")
-    for dir_path in memory_dirs:
-        # Expand user path (~) if necessary
-        full_path = os.path.expanduser(dir_path)
         if os.path.exists(full_path):
             try:
                 shutil.rmtree(full_path)
