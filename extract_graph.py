@@ -7,22 +7,15 @@ from typing import List
 from dotenv import load_dotenv
 
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 
 # 1. Load Secrets
-# ... inside extract_graph.py ...
 load_dotenv()
-
-# ADD THESE LINES TO DEBUG:
-key = os.getenv("GOOGLE_API_KEY")
-print(f"DEBUG: My Key starts with: {key[:5]}... and ends with: ...{key[-5:]}")
 
 # --- CONFIGURATION ---
 PDF_FOLDER = "pdfs"       # Folder containing your PDF files
 OUTPUT_FILE = "triples.json" # Final output file
-CHUNK_SIZE = 15000         # Characters per chunk (reduced to avoid context limits) to leverage Gemini's context)
-# ---------------------
+CHUNK_SIZE = 15000         # Characters per chunk (reduced to avoid context limits)
 
 # 2. Define the Strict Schema (Domain Agnostic)
 class KnowledgeTriple(BaseModel):
@@ -101,79 +94,6 @@ def read_pdf(file_path_or_bytes):
             
     return text
 
-def process_pdf_file(file_path_or_bytes, filename: str = None, progress_callback=None):
-    """
-    Process a single PDF file and extract triples.
-    
-    Args:
-        file_path_or_bytes: Either a file path (str) or bytes object
-        filename: Optional filename for metadata
-        progress_callback: Optional callback function for progress updates
-    
-    Returns:
-        List of extracted triples
-    """
-    all_triples = []
-    
-    try:
-        # Read PDF
-        raw_text = read_pdf(file_path_or_bytes)
-        if not raw_text or len(raw_text.strip()) < 100:
-            msg = f"⚠️ Warning: Empty or very short text found in {filename or 'file'}. This might be a scanned PDF (image-only)."
-            if progress_callback:
-                progress_callback(msg)
-            print(msg)
-            return []
-        
-        if progress_callback:
-            progress_callback(f"📄 Processing {filename or 'file'}...")
-        
-        # Detect Domain
-        current_domain = detect_domain(raw_text)
-        if progress_callback:
-            progress_callback(f"🧠 Detected Domain: {current_domain}")
-        
-        # Chunking
-        chunks = [raw_text[j:j+CHUNK_SIZE] for j in range(0, len(raw_text), CHUNK_SIZE)]
-        if progress_callback:
-            progress_callback(f"✂️ Split into {len(chunks)} chunks. Extracting triples...")
-        
-        # Extract from each chunk
-        chunks_with_triples = 0
-        for k, chunk in enumerate(chunks):
-            try:
-                if len(chunk.strip()) < 50:  # Skip very short chunks
-                    continue
-                    
-                response = extract_triples(chunk, domain=current_domain)
-                if response and response.triples and len(response.triples) > 0:
-                    chunks_with_triples += 1
-                    for t in response.triples:
-                        triple_dict = t.dict()
-                        triple_dict['source'] = filename or 'uploaded_file'
-                        all_triples.append(triple_dict)
-                elif progress_callback and k < 3:  # Show first few empty chunks
-                    progress_callback(f"   ⚠️ Chunk {k+1}: No triples found (may be normal)")
-                
-                time.sleep(1.5)  # Rate limiting - reduced delay
-                
-                if progress_callback and (k + 1) % 5 == 0:
-                    progress_callback(f"   Processed {k+1}/{len(chunks)} chunks ({chunks_with_triples} with triples)...")
-                    
-            except Exception as e:
-                if progress_callback:
-                    progress_callback(f"   ❌ Error on chunk {k+1}: {str(e)[:100]}")
-        
-        if progress_callback:
-            progress_callback(f"✅ Extracted {len(all_triples)} triples from {filename or 'file'}.")
-        
-        return all_triples, current_domain
-        
-    except Exception as e:
-        if progress_callback:
-            progress_callback(f"❌ Failed to process file: {e}")
-        return [], "Unknown"
-
 def detect_domain(preview_text):
     """Asks Gemini to guess the domain from the first 1000 chars."""
     max_retries = 3
@@ -199,6 +119,23 @@ def detect_domain(preview_text):
             else:
                 print(f"   ⚠️ Error detecting domain: {e}")
                 return "Unknown Domain"  # Fallback
+    return "Unknown Domain"
+
+def generate_summary(text):
+    """Generates a concise summary of the research paper."""
+    try:
+        prompt = f"""
+        Provide a concise summary (3-5 sentences) of the following research paper text. 
+        Focus on the main objectives, methodology, and key findings.
+        
+        TEXT PREVIEW:
+        {text[:5000]}...
+        """
+        response = llm_general.invoke(prompt)
+        return response.content.strip()
+    except Exception as e:
+        print(f"   ⚠️ Error generating summary: {e}")
+        return "Summary not available."
 
 def extract_triples(text_chunk, domain):
     """Extracts triples using the specific domain context."""
@@ -348,6 +285,84 @@ Return JSON: [{{"head": "...", "relation": "...", "tail": "..."}}]"""
     
     return KnowledgeGraph(triples=[])
 
+def process_pdf_file(file_path_or_bytes, filename: str = None, progress_callback=None):
+    """
+    Process a single PDF file and extract triples.
+    
+    Args:
+        file_path_or_bytes: Either a file path (str) or bytes object
+        filename: Optional filename for metadata
+        progress_callback: Optional callback function for progress updates
+    
+    Returns:
+        List of extracted triples
+    """
+    all_triples = []
+    
+    try:
+        # Read PDF
+        raw_text = read_pdf(file_path_or_bytes)
+        if not raw_text or len(raw_text.strip()) < 100:
+            msg = f"⚠️ Warning: Empty or very short text found in {filename or 'file'}. This might be a scanned PDF (image-only)."
+            if progress_callback:
+                progress_callback(msg)
+            print(msg)
+            return [], "Unknown", "No text found"
+        
+        if progress_callback:
+            progress_callback(f"📄 Processing {filename or 'file'}...")
+        
+        # Detect Domain
+        current_domain = detect_domain(raw_text)
+        if progress_callback:
+            progress_callback(f"🧠 Detected Domain: {current_domain}")
+            
+        # Generate Summary
+        summary = generate_summary(raw_text)
+        if progress_callback:
+            progress_callback(f"📝 Generated Summary")
+        
+        # Chunking
+        chunks = [raw_text[j:j+CHUNK_SIZE] for j in range(0, len(raw_text), CHUNK_SIZE)]
+        if progress_callback:
+            progress_callback(f"✂️ Split into {len(chunks)} chunks. Extracting triples...")
+        
+        # Extract from each chunk
+        chunks_with_triples = 0
+        for k, chunk in enumerate(chunks):
+            try:
+                if len(chunk.strip()) < 50:  # Skip very short chunks
+                    continue
+                    
+                response = extract_triples(chunk, domain=current_domain)
+                if response and response.triples and len(response.triples) > 0:
+                    chunks_with_triples += 1
+                    for t in response.triples:
+                        triple_dict = t.dict()
+                        triple_dict['source'] = filename or 'uploaded_file'
+                        all_triples.append(triple_dict)
+                elif progress_callback and k < 3:  # Show first few empty chunks
+                    progress_callback(f"   ⚠️ Chunk {k+1}: No triples found (may be normal)")
+                
+                time.sleep(1.5)  # Rate limiting - reduced delay
+                
+                if progress_callback and (k + 1) % 5 == 0:
+                    progress_callback(f"   Processed {k+1}/{len(chunks)} chunks ({chunks_with_triples} with triples)...")
+                    
+            except Exception as e:
+                if progress_callback:
+                    progress_callback(f"   ❌ Error on chunk {k+1}: {str(e)[:100]}")
+        
+        if progress_callback:
+            progress_callback(f"✅ Extracted {len(all_triples)} triples from {filename or 'file'}.")
+        
+        return all_triples, current_domain, summary
+        
+    except Exception as e:
+        if progress_callback:
+            progress_callback(f"❌ Failed to process file: {e}")
+        return [], "Unknown", "Processing failed."
+
 # 4. Main Execution Loop
 if __name__ == "__main__":
     all_master_triples = []
@@ -362,7 +377,7 @@ if __name__ == "__main__":
 
         for i, pdf_file in enumerate(pdf_files):
             filename = os.path.basename(pdf_file)
-            file_triples = process_pdf_file(pdf_file, filename=filename, progress_callback=print)
+            file_triples, _, _ = process_pdf_file(pdf_file, filename=filename, progress_callback=print)
             all_master_triples.extend(file_triples)
 
         # 5. Save Final Result

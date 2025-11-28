@@ -174,6 +174,22 @@ if 'processing_status' not in st.session_state:
     st.session_state.processing_status = ""
 if 'session_id' not in st.session_state:
     st.session_state.session_id = str(uuid.uuid4())
+if 'processed_papers' not in st.session_state:
+    st.session_state.processed_papers = {}  # Dict to store metadata: {filename: {summary, domain}}
+
+# Optimize initialization
+@st.cache_resource
+def init_app_components():
+    """Initialize global components once"""
+    try:
+        initialize_components()
+        return True
+    except Exception as e:
+        print(f"Initialization error: {e}")
+        return False
+
+# Run initialization
+init_app_components()
 
 
 # Sidebar
@@ -274,11 +290,17 @@ with tab1:
                             def progress_callback(msg):
                                 status_text.text(msg)
                             
-                            file_triples, domain = process_pdf_file(
+                            file_triples, domain, summary = process_pdf_file(
                                 tmp_path, 
                                 filename=uploaded_file.name,
                                 progress_callback=progress_callback
                             )
+                            
+                            # Store metadata
+                            st.session_state.processed_papers[uploaded_file.name] = {
+                                'domain': domain,
+                                'summary': summary
+                            }
                             
                             # Store domain and generate relevant queries if not already done
                             if domain and domain != "Unknown":
@@ -335,6 +357,13 @@ with tab1:
                     else:
                         st.warning("⚠️ No triples extracted from the uploaded files.")
                         st.info("💡 Tips: Make sure the PDFs contain extractable text (not just images). Try with research papers that have clear text content.")
+            
+            # Display Summaries
+            if st.session_state.processed_papers:
+                st.markdown("### 📝 Processed Papers & Summaries")
+                for filename, data in st.session_state.processed_papers.items():
+                    with st.expander(f"📄 {filename} ({data.get('domain', 'Unknown')})"):
+                        st.markdown(f"**Summary:**\n{data.get('summary', 'No summary available.')}")
         
         with col2:
             if st.button("🗑️ Clear All", use_container_width=True):
@@ -623,11 +652,28 @@ with tab4:
     if not st.session_state.graph_created:
         st.warning("⚠️ Please ensure Neo4j is connected and you have processed some PDFs.")
     else:
-        st.markdown("### 🎯 Research Topic")
-        research_topic = st.text_input(
-            "Enter a research topic or question:",
-            placeholder="e.g., Alzheimer's disease mechanisms, Neuroinflammation pathways, Protein interactions"
-        )
+        st.markdown("### 🎯 Research Configuration")
+        
+        col_domain, col_topic = st.columns([1, 2])
+        
+        with col_domain:
+            # Auto-fill domain if detected
+            default_domain = st.session_state.get('current_domain', "Scientific Research")
+            if default_domain == "Unknown": 
+                default_domain = "Scientific Research"
+                
+            domain_input = st.text_input(
+                "Research Domain:",
+                value=default_domain,
+                help="The broader field of study (e.g., Biology, Computer Science)"
+            )
+            
+        with col_topic:
+            research_topic = st.text_input(
+                "Specific Topic:",
+                placeholder="e.g., Alzheimer's disease mechanisms",
+                help="The specific question or topic to investigate"
+            )
         
         col1, col2 = st.columns([1, 1])
         
@@ -653,7 +699,7 @@ with tab4:
                                 progress_bar.progress(80)
                             
                             # Launch crew
-                            crew = get_crew(research_topic)
+                            crew = get_crew(research_topic, domain=domain_input)
                             result = crew.kickoff()
                             
                             progress_bar.progress(100)
