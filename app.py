@@ -5,7 +5,7 @@ import tempfile
 import time
 import uuid
 from pathlib import Path
-from agents import get_crew
+from agents import get_crew, generate_research_topics
 from tools import cypher_chain, graph, initialize_components
 from extract_graph import process_pdf_file
 from populate_Graph import populate_neo4j
@@ -741,13 +741,49 @@ with tab4:
         
         with col2:
             st.markdown("### 📚 Example Topics")
-            example_topics = [
-                "Alzheimer's disease and tau pathology",
-                "Neuroinflammation mechanisms",
-                "Amyloid beta aggregation",
-                "Protein-protein interactions in neurodegeneration",
-                "Genetic factors in dementia"
-            ]
+            
+            # Check if we need to generate new topics
+            if 'dynamic_topics' not in st.session_state or st.session_state.get('last_processed_count', 0) != len(st.session_state.processed_papers):
+                
+                # Get context from processed papers
+                if st.session_state.processed_papers:
+                    context_summaries = "\n".join([f"- {p['summary']}" for p in st.session_state.processed_papers.values() if p.get('summary')])
+                    current_domain = st.session_state.get('current_domain', "Scientific Research")
+                    
+                    if context_summaries:
+                        with st.spinner("🧠 Generating relevant research topics..."):
+                            try:
+                                st.session_state.dynamic_topics = generate_research_topics(current_domain, context_summaries)
+                                st.session_state.last_processed_count = len(st.session_state.processed_papers)
+                            except Exception as e:
+                                print(f"Error generating topics: {e}")
+                                # Fallback
+                                st.session_state.dynamic_topics = [
+                                    "Alzheimer's disease and tau pathology",
+                                    "Neuroinflammation mechanisms",
+                                    "Amyloid beta aggregation",
+                                    "Protein-protein interactions in neurodegeneration",
+                                    "Genetic factors in dementia"
+                                ]
+                    else:
+                         st.session_state.dynamic_topics = [
+                            "Alzheimer's disease and tau pathology",
+                            "Neuroinflammation mechanisms",
+                            "Amyloid beta aggregation",
+                            "Protein-protein interactions in neurodegeneration",
+                            "Genetic factors in dementia"
+                        ]
+                else:
+                    # Default if no papers
+                    st.session_state.dynamic_topics = [
+                        "Alzheimer's disease and tau pathology",
+                        "Neuroinflammation mechanisms",
+                        "Amyloid beta aggregation",
+                        "Protein-protein interactions in neurodegeneration",
+                        "Genetic factors in dementia"
+                    ]
+            
+            example_topics = st.session_state.dynamic_topics
             
             for topic in example_topics:
                 if st.button(f"📌 {topic}", key=f"topic_{topic}", use_container_width=True):
