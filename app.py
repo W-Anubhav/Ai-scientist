@@ -214,6 +214,18 @@ with st.sidebar:
         st.info("Please ensure Neo4j is running and credentials are set in .env")
         st.session_state.graph_created = False
     
+    # Clear Graph Button
+    if st.session_state.graph_created:
+        st.markdown("---")
+        if st.button("🗑️ Clear Graph Data", use_container_width=True, type="secondary"):
+            if clear_database(st.session_state.session_id):
+                st.success("✅ Graph data cleared!")
+                st.session_state.graph_created = False
+                st.session_state.processed_papers = {}
+                st.rerun()
+            else:
+                st.error("❌ Failed to clear graph.")
+    
     st.markdown("---")
     st.markdown("### 📊 Quick Stats")
     if st.session_state.graph_created:
@@ -269,7 +281,15 @@ with tab1:
         col1, col2 = st.columns([1, 1])
         
         with col1:
+            # Clear data option
+            clear_existing = st.checkbox("🗑️ Clear existing graph data before processing", value=True, help="Recommended to prevent 'Context Pollution' from previous papers.")
+            
             if st.button("🚀 Process PDFs & Extract Knowledge", use_container_width=True):
+                if clear_existing and st.session_state.graph_created:
+                    with st.spinner("🧹 Clearing old graph data..."):
+                        clear_database(st.session_state.session_id)
+                        st.session_state.processed_papers = {}
+                        st.success("Old data cleared.")
                 if not st.session_state.graph_created:
                     st.error("❌ Please connect to Neo4j first. Check your connection in the sidebar.")
                 else:
