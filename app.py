@@ -648,6 +648,9 @@ with tab4:
         </ul>
     </div>
     """, unsafe_allow_html=True)
+
+    def set_research_topic(topic):
+        st.session_state.research_topic = topic
     
     if not st.session_state.graph_created:
         st.warning("⚠️ Please ensure Neo4j is connected and you have processed some PDFs.")
@@ -787,9 +790,13 @@ with tab4:
             example_topics = st.session_state.dynamic_topics
             
             for topic in example_topics:
-                if st.button(f"📌 {topic}", key=f"topic_{topic}", use_container_width=True):
-                    st.session_state.research_topic = topic
-                    st.rerun()
+                st.button(
+                    f"📌 {topic}", 
+                    key=f"topic_{topic}", 
+                    use_container_width=True,
+                    on_click=set_research_topic,
+                    args=(topic,)
+                )
 
 # Footer
 st.markdown("---")
