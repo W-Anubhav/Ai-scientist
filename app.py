@@ -671,6 +671,7 @@ with tab4:
         with col_topic:
             research_topic = st.text_input(
                 "Specific Topic:",
+                key="research_topic",
                 placeholder="e.g., Alzheimer's disease mechanisms",
                 help="The specific question or topic to investigate"
             )
