@@ -1,20 +1,3 @@
-import os
-import shutil
-from crewai import Agent, Task, Crew, Process, LLM as CrewLLM
-from tools import GraphTools 
-from dotenv import load_dotenv
-
-load_dotenv()
-
-# Define LLMs (Global)
-        topic: The specific subject (e.g., "Adversarial Attacks on GNNs")
-        domain: The broader field (e.g., "Computer Science", "Sociology", "Biology")
-    """
-    
-    # Call this function IMMEDIATELY before you define your agents
-    clear_agent_memory()
-
-    # --- 1. DYNAMIC AGENTS (Defined inside to use 'domain') ---
 
     # Agent 1: The Cartographer (Maps the territory)
     analyst = Agent(
