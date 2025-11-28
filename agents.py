@@ -1,3 +1,60 @@
+import os
+import shutil
+from crewai import Agent, Task, Crew, Process, LLM as CrewLLM
+from tools import GraphTools 
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# Define LLMs (Global)
+# Check for API key
+if not os.getenv("GOOGLE_API_KEY"):
+    print("⚠️ WARNING: GOOGLE_API_KEY not found in environment variables!")
+
+llm_fast = CrewLLM(model="gemini/gemini-2.5-flash", api_key=os.getenv("GOOGLE_API_KEY"))
+llm_smart = CrewLLM(model="gemini/gemini-2.5-pro", api_key=os.getenv("GOOGLE_API_KEY"), temperature=0.7)
+
+def clear_agent_memory():
+    """
+    Destroys the AI's short-term and long-term memory before a new run.
+    This prevents 'Context Pollution' where old papers bleed into new research.
+    """
+    memory_dirs = [
+        "./workdir/short_term",   # CrewAI default memory paths
+        "./workdir/long_term",
+        "./workdir/short_term_memory.pkl", # User suggested specific files
+        "./workdir/long_term_memory.pkl",
+        "./workdir/chroma_db",
+        "./chroma_db",            # If you are using a custom VectorStore
+        "~/.crewai/memory"        # Global cache (sometimes hidden here)
+    ]
+    
+    print("🧹 Cleaning AI Memory...")
+    for dir_path in memory_dirs:
+        # Expand user path (~) if necessary
+        full_path = os.path.expanduser(dir_path)
+        if os.path.exists(full_path):
+            try:
+                if os.path.isdir(full_path):
+                    shutil.rmtree(full_path)
+                else:
+                    os.remove(full_path)
+                print(f"   - Wiped: {full_path}")
+            except Exception as e:
+                print(f"   - Error wiping {full_path}: {e}")
+
+def get_crew(topic, domain="Scientific Research"):
+    """
+    Creates a dynamic crew that adapts its persona to the specific domain.
+    Args:
+        topic: The specific subject (e.g., "Adversarial Attacks on GNNs")
+        domain: The broader field (e.g., "Computer Science", "Sociology", "Biology")
+    """
+    
+    # Call this function IMMEDIATELY before you define your agents
+    clear_agent_memory()
+
+    # --- 1. DYNAMIC AGENTS (Defined inside to use 'domain') ---
 
     # Agent 1: The Cartographer (Maps the territory)
     analyst = Agent(
